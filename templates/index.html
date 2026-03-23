@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 스마트 면접관</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  <div class="landing-wrapper">
+    <!-- 배경 파티클 효과 -->
+    <div class="bg-particles">
+      <div class="particle"></div><div class="particle"></div>
+      <div class="particle"></div><div class="particle"></div>
+      <div class="particle"></div>
+    </div>
+
+    <nav class="navbar">
+      <div class="nav-logo">
+        <span class="logo-icon">🤖</span>
+        <span class="logo-text">AI 면접관</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="color:rgba(255,255,255,0.6);font-size:0.875rem;">{{ user_email }}</span>
+        <a href="/logout" style="padding:8px 16px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:#fff;text-decoration:none;font-size:0.875rem;">로그아웃</a>
+      </div>
+    </nav>
+
+    <main class="hero-section">
+      <div class="hero-content">
+        <div class="badge">AI 기반 스마트 면접 코치</div>
+        <h1 class="hero-title">
+          실제 면접처럼<br/>
+          <span class="gradient-text">AI와 함께 연습하세요</span>
+        </h1>
+        <p class="hero-subtitle">
+          GPT 실시간 피드백 · MediaPipe 얼굴 분석 · 음성 습관어 감지<br/>
+          맞춤형 질문 생성 · 상세 리포트 제공
+        </p>
+
+        <!-- 회사/직무 입력 폼 -->
+        <div class="setup-card">
+          <h2 class="setup-title">면접 설정</h2>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="company">지원 회사</label>
+              <input type="text" id="company" placeholder="예: 삼성전자, 카카오, 네이버..." />
+            </div>
+            <div class="form-group">
+              <label for="position">지원 직무</label>
+              <input type="text" id="position" placeholder="예: 백엔드 개발자, 마케터..." />
+            </div>
+            <div class="form-group">
+              <label for="job-type">직무 분야</label>
+              <select id="job-type">
+                <option value="">선택하세요</option>
+                <option value="개발/IT">개발/IT</option>
+                <option value="마케팅">마케팅</option>
+                <option value="영업">영업</option>
+                <option value="디자인">디자인</option>
+                <option value="경영/기획">경영/기획</option>
+                <option value="재무/회계">재무/회계</option>
+                <option value="인사/HR">인사/HR</option>
+                <option value="기타">기타</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="difficulty">난이도</label>
+              <select id="difficulty">
+                <option value="beginner">입문 (신입)</option>
+                <option value="intermediate" selected>중급 (1~3년)</option>
+                <option value="advanced">고급 (3년+)</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn-start" id="btn-start" onclick="startInterview()">
+            <span class="btn-icon">▶</span>
+            면접 시작하기
+          </button>
+        </div>
+
+        <!-- 기능 소개 카드 -->
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-icon">📹</div>
+            <h3>실시간 얼굴 분석</h3>
+            <p>MediaPipe로 시선, 자세, 표정을 실시간 분석</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🎤</div>
+            <h3>음성 분석</h3>
+            <p>습관어 감지, 말하기 속도, 자신감 분석</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🧠</div>
+            <h3>GPT 피드백</h3>
+            <p>답변의 논리성·구체성·적합성 실시간 평가</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">📊</div>
+            <h3>상세 리포트</h3>
+            <p>점수와 함께 PDF 리포트 다운로드 제공</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    function startInterview() {
+      const company = document.getElementById("company").value.trim();
+      const position = document.getElementById("position").value.trim();
+      const jobType = document.getElementById("job-type").value;
+      const difficulty = document.getElementById("difficulty").value;
+
+      if (!company || !position) {
+        alert("지원 회사와 직무를 입력해주세요.");
+        return;
+      }
+
+      // 면접 정보 저장
+      sessionStorage.setItem("company", company);
+      sessionStorage.setItem("position", position);
+      sessionStorage.setItem("jobType", jobType);
+      sessionStorage.setItem("difficulty", difficulty);
+
+      // 로딩 상태
+      const btn = document.getElementById("btn-start");
+      btn.innerHTML = '<span class="loading-spinner"></span> 질문 생성 중...';
+      btn.disabled = true;
+
+      // 질문 생성 API 호출
+      fetch("/api/generate-questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ company, position, job_type: jobType })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            sessionStorage.setItem("questions", JSON.stringify(data.questions));
+            window.location.href = "/interview";
+          } else {
+            alert("질문 생성 중 오류가 발생했습니다: " + data.error);
+            btn.innerHTML = '<span class="btn-icon">▶</span> 면접 시작하기';
+            btn.disabled = false;
+          }
+        })
+        .catch(err => {
+          alert("서버 연결 오류: " + err.message);
+          btn.innerHTML = '<span class="btn-icon">▶</span> 면접 시작하기';
+          btn.disabled = false;
+        });
+    }
+
+    // Enter 키로 시작
+    document.addEventListener("keydown", e => {
+      if (e.key === "Enter") startInterview();
+    });
+  </script>
+</body>
+</html>

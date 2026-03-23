@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 면접 진행 중</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body class="interview-body">
+
+  <!-- 상단 헤더 -->
+  <header class="interview-header">
+    <div class="interview-header-left">
+      <span class="logo-icon">🤖</span>
+      <span id="company-display">면접 진행 중</span>
+    </div>
+    <div class="interview-progress">
+      <span id="question-counter">1 / 10</span>
+      <div class="progress-bar-container">
+        <div class="progress-bar-fill" id="progress-fill" style="width: 10%"></div>
+      </div>
+    </div>
+    <div class="interview-header-right">
+      <div class="timer-display" id="timer-display">03:00</div>
+      <button class="btn-end-interview" onclick="endInterview()">면접 종료</button>
+    </div>
+  </header>
+
+  <div class="interview-layout">
+
+    <!-- 좌측: 카메라 + 얼굴 분석 -->
+    <div class="camera-panel">
+      <div class="camera-container">
+        <video id="camera-feed" autoplay muted playsinline></video>
+        <canvas id="face-canvas"></canvas>
+
+        <!-- 얼굴 분석 오버레이 -->
+        <div class="face-overlay">
+          <div class="face-status" id="face-status">
+            <span class="status-dot green"></span>
+            <span>얼굴 감지됨</span>
+          </div>
+        </div>
+
+        <!-- 녹화 표시 -->
+        <div class="recording-badge" id="recording-badge" style="display:none">
+          <span class="rec-dot"></span> REC
+        </div>
+      </div>
+
+      <!-- 실시간 얼굴 분석 지표 -->
+      <div class="face-metrics">
+        <div class="metric-item">
+          <span class="metric-label">👁️ 시선</span>
+          <div class="metric-bar">
+            <div class="metric-fill" id="eye-fill" style="width: 70%"></div>
+          </div>
+          <span class="metric-value" id="eye-score">70</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">🪑 자세</span>
+          <div class="metric-bar">
+            <div class="metric-fill" id="posture-fill" style="width: 70%"></div>
+          </div>
+          <span class="metric-value" id="posture-score">70</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">😊 표정</span>
+          <div class="metric-bar">
+            <div class="metric-fill" id="expression-fill" style="width: 70%"></div>
+          </div>
+          <span class="metric-value" id="expression-score">70</span>
+        </div>
+      </div>
+
+      <!-- 카메라 피드백 메시지 -->
+      <div class="camera-feedback" id="camera-feedback">
+        카메라 정면을 바라보고 바른 자세를 유지하세요.
+      </div>
+    </div>
+
+    <!-- 중앙: 면접 진행 -->
+    <div class="interview-main">
+
+      <!-- 질문 카드 -->
+      <div class="question-card">
+        <div class="question-header">
+          <span class="question-badge" id="q-category">인성/자기소개</span>
+          <span class="difficulty-badge" id="q-difficulty">보통</span>
+          <span class="q-number" id="q-number">Q1</span>
+        </div>
+        <p class="question-text" id="question-text">
+          면접 질문이 표시됩니다.
+        </p>
+        <div class="question-tips" id="question-tips" style="display:none">
+          <span class="tips-icon">💡</span>
+          <span id="tips-text">답변 팁</span>
+        </div>
+      </div>
+
+      <!-- 답변 영역 -->
+      <div class="answer-section">
+        <!-- 음성 인식 상태 -->
+        <div class="speech-status" id="speech-status">
+          <div class="speech-wave" id="speech-wave">
+            <div class="wave-bar"></div><div class="wave-bar"></div>
+            <div class="wave-bar"></div><div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+          </div>
+          <span id="speech-status-text">마이크 버튼을 눌러 답변하세요</span>
+        </div>
+
+        <!-- 실시간 전사 텍스트 -->
+        <div class="transcript-box">
+          <div class="transcript-label">음성 인식 결과 (실시간)</div>
+          <div class="transcript-text" id="transcript-text">
+            답변을 시작하면 여기에 텍스트가 표시됩니다...
+          </div>
+        </div>
+
+        <!-- 음성 분석 실시간 표시 -->
+        <div class="speech-metrics-row">
+          <div class="speech-metric">
+            <span class="sm-icon">🗣️</span>
+            <span class="sm-label">말하기 속도</span>
+            <span class="sm-value" id="speed-display">분석 중</span>
+          </div>
+          <div class="speech-metric">
+            <span class="sm-icon">⚠️</span>
+            <span class="sm-label">습관어</span>
+            <span class="sm-value" id="filler-display">0회</span>
+          </div>
+          <div class="speech-metric">
+            <span class="sm-icon">💪</span>
+            <span class="sm-label">자신감</span>
+            <span class="sm-value" id="confidence-display">분석 중</span>
+          </div>
+          <div class="speech-metric">
+            <span class="sm-icon">🎵</span>
+            <span class="sm-label">음성 톤</span>
+            <span class="sm-value" id="tone-display">분석 중</span>
+          </div>
+        </div>
+
+        <!-- 컨트롤 버튼 -->
+        <div class="control-buttons">
+          <button class="btn-mic" id="btn-mic" onclick="toggleMic()">
+            <span class="mic-icon">🎤</span>
+            <span id="mic-text">답변 시작</span>
+          </button>
+          <button class="btn-next" id="btn-next" onclick="submitAnswer()" disabled>
+            다음 질문 →
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 우측: GPT 피드백 -->
+    <div class="feedback-panel">
+      <div class="feedback-header">
+        <span>🧠 AI 피드백</span>
+        <span class="feedback-score-badge" id="feedback-score">--점</span>
+      </div>
+
+      <div class="feedback-content" id="feedback-content">
+        <div class="feedback-placeholder">
+          <div class="placeholder-icon">💬</div>
+          <p>답변을 제출하면<br/>AI 피드백이 표시됩니다</p>
+        </div>
+      </div>
+
+      <!-- 점수 게이지 -->
+      <div class="score-gauges" id="score-gauges" style="display:none">
+        <div class="gauge-item">
+          <div class="gauge-label">논리성</div>
+          <div class="gauge-bar">
+            <div class="gauge-fill logic-color" id="logic-gauge" style="width:0%"></div>
+          </div>
+          <span id="logic-val">0</span>
+        </div>
+        <div class="gauge-item">
+          <div class="gauge-label">구체성</div>
+          <div class="gauge-bar">
+            <div class="gauge-fill specific-color" id="specific-gauge" style="width:0%"></div>
+          </div>
+          <span id="specific-val">0</span>
+        </div>
+        <div class="gauge-item">
+          <div class="gauge-label">적합성</div>
+          <div class="gauge-bar">
+            <div class="gauge-fill relevance-color" id="relevance-gauge" style="width:0%"></div>
+          </div>
+          <span id="relevance-val">0</span>
+        </div>
+      </div>
+
+      <!-- 강점/개선점 -->
+      <div class="strengths-section" id="strengths-section" style="display:none">
+        <div class="strength-group">
+          <div class="sg-title">✅ 강점</div>
+          <ul id="strengths-list"></ul>
+        </div>
+        <div class="strength-group">
+          <div class="sg-title">⚡ 개선점</div>
+          <ul id="improvements-list"></ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

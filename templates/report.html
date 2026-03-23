@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>면접 결과 리포트</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body class="report-body">
+
+  <div class="report-wrapper">
+    <!-- 리포트 헤더 -->
+    <div class="report-header">
+      <div class="report-logo">🤖 AI 면접관</div>
+      <h1 class="report-title">면접 결과 리포트</h1>
+      <div class="report-meta" id="report-meta">
+        <span id="report-company">회사 정보 로딩 중...</span>
+        <span class="meta-divider">|</span>
+        <span id="report-date">날짜</span>
+      </div>
+      <button class="btn-download" onclick="downloadPDF()">
+        📄 PDF 다운로드
+      </button>
+    </div>
+
+    <!-- 전체 점수 카드 -->
+    <div class="overall-score-section">
+      <div class="score-card-large">
+        <div class="score-circle-container">
+          <svg class="score-ring" width="160" height="160" viewBox="0 0 160 160">
+            <circle class="ring-bg" cx="80" cy="80" r="70" />
+            <circle class="ring-fill" id="score-ring-fill" cx="80" cy="80" r="70"
+              stroke-dasharray="440" stroke-dashoffset="440" />
+          </svg>
+          <div class="score-circle-text">
+            <div class="score-number" id="overall-score">0</div>
+            <div class="score-label">/ 100</div>
+          </div>
+        </div>
+        <div class="score-level" id="score-level">분석 중</div>
+        <div class="score-description" id="score-desc">결과를 불러오는 중입니다...</div>
+      </div>
+
+      <!-- 세부 점수 카드 -->
+      <div class="sub-scores-grid">
+        <div class="sub-score-card">
+          <div class="sub-score-icon">🧠</div>
+          <div class="sub-score-label">답변 품질</div>
+          <div class="sub-score-value" id="answer-score">--</div>
+          <div class="sub-score-bar">
+            <div class="sub-bar-fill answer-color" id="answer-bar" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="sub-score-card">
+          <div class="sub-score-icon">🎤</div>
+          <div class="sub-score-label">말하기</div>
+          <div class="sub-score-value" id="speech-score">--</div>
+          <div class="sub-score-bar">
+            <div class="sub-bar-fill speech-color" id="speech-bar" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="sub-score-card">
+          <div class="sub-score-icon">📹</div>
+          <div class="sub-score-label">자세/태도</div>
+          <div class="sub-score-value" id="posture-score-val">--</div>
+          <div class="sub-score-bar">
+            <div class="sub-bar-fill posture-color" id="posture-bar" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="sub-score-card">
+          <div class="sub-score-icon">💪</div>
+          <div class="sub-score-label">자신감</div>
+          <div class="sub-score-value" id="confidence-score-val">--</div>
+          <div class="sub-score-bar">
+            <div class="sub-bar-fill confidence-color" id="confidence-bar" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 음성 분석 상세 -->
+    <div class="report-section">
+      <h2 class="section-title">🎤 음성 분석 상세</h2>
+      <div class="analysis-grid">
+        <div class="analysis-card">
+          <div class="analysis-title">습관어 사용</div>
+          <div class="analysis-value" id="filler-result">분석 중</div>
+          <div class="analysis-detail" id="filler-detail"></div>
+          <div class="analysis-badge" id="filler-badge">--</div>
+        </div>
+        <div class="analysis-card">
+          <div class="analysis-title">말하기 속도</div>
+          <div class="analysis-value" id="speed-result">분석 중</div>
+          <div class="analysis-detail" id="speed-detail"></div>
+          <div class="analysis-badge" id="speed-badge">--</div>
+        </div>
+        <div class="analysis-card">
+          <div class="analysis-title">STAR 기법</div>
+          <div class="analysis-value" id="star-result">분석 중</div>
+          <div class="analysis-detail" id="star-detail"></div>
+          <div class="analysis-badge" id="star-badge">--</div>
+        </div>
+        <div class="analysis-card">
+          <div class="analysis-title">음성 톤</div>
+          <div class="analysis-value" id="tone-result">분석 중</div>
+          <div class="analysis-detail" id="tone-detail"></div>
+          <div class="analysis-badge" id="tone-badge">--</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q&A 상세 피드백 -->
+    <div class="report-section">
+      <h2 class="section-title">📝 질문별 피드백</h2>
+      <div id="qa-feedback-list">
+        <div class="loading-placeholder">피드백 데이터를 불러오는 중...</div>
+      </div>
+    </div>
+
+    <!-- 개선 계획 -->
+    <div class="report-section">
+      <h2 class="section-title">📈 맞춤 개선 계획</h2>
+      <div class="improvement-plan" id="improvement-plan">
+        <div class="loading-placeholder">개선 계획을 불러오는 중...</div>
+      </div>
+    </div>
+
+    <!-- 다시 연습하기 버튼 -->
+    <div class="report-footer">
+      <a href="/" class="btn-retry">🔄 다시 연습하기</a>
+    </div>
+  </div>
+
+  <script>
+    const sessionId = "{{ session_id }}";
+
+    async function loadReport() {
+      try {
+        const res = await fetch(`/api/get-report/${sessionId}`);
+        const data = await res.json();
+
+        if (!data.success) {
+          // sessionStorage에서 데이터 로드 시도
+          loadFromSessionStorage();
+          return;
+        }
+
+        renderReport(data.report);
+      } catch {
+        loadFromSessionStorage();
+      }
+    }
+
+    function loadFromSessionStorage() {
+      const reportData = sessionStorage.getItem("reportData");
+      if (reportData) {
+        renderReport(JSON.parse(reportData));
+      }
+    }
+
+    function renderReport(report) {
+      // 메타 정보
+      document.getElementById("report-company").textContent =
+        `${report.company || "--"} | ${report.position || "--"}`;
+      document.getElementById("report-date").textContent =
+        (report.start_time || "").substring(0, 10);
+
+      // 전체 점수
+      const totalScore = report.total_score || 0;
+      animateScore(totalScore);
+
+      // 세부 점수
+      const answers = report.answers || [];
+      if (answers.length > 0) {
+        const avgScore = answers.reduce((s, a) => s + (a.feedback?.score || 0), 0) / answers.length;
+        updateSubScore("answer-score", "answer-bar", Math.round(avgScore));
+      }
+
+      const speechSummary = report.speech_summary || {};
+      if (speechSummary.overall_speech_score) {
+        updateSubScore("speech-score", "speech-bar", speechSummary.overall_speech_score);
+      }
+
+      const faceSummary = report.face_summary || {};
+      if (faceSummary.overall_score) {
+        updateSubScore("posture-score-val", "posture-bar", faceSummary.overall_score);
+      }
+
+      const confidenceScore = speechSummary.confidence_analysis?.confidence_score || 0;
+      if (confidenceScore) {
+        updateSubScore("confidence-score-val", "confidence-bar", confidenceScore);
+      }
+
+      // 음성 분석
+      renderSpeechAnalysis(speechSummary);
+
+      // Q&A 피드백
+      renderQAFeedback(answers);
+
+      // 개선 계획
+      renderImprovementPlan(answers);
+    }
+
+    function animateScore(score) {
+      document.getElementById("overall-score").textContent = score;
+
+      // 링 애니메이션
+      const circumference = 440;
+      const offset = circumference - (score / 100) * circumference;
+      const ring = document.getElementById("score-ring-fill");
+      setTimeout(() => {
+        ring.style.transition = "stroke-dashoffset 1.5s ease";
+        ring.style.strokeDashoffset = offset;
+      }, 300);
+
+      // 레벨 텍스트
+      let level, desc, color;
+      if (score >= 85) {
+        level = "🌟 우수"; desc = "면접 합격 가능성이 매우 높습니다!"; color = "#10b981";
+      } else if (score >= 70) {
+        level = "👍 양호"; desc = "좋은 준비 상태입니다. 조금 더 다듬으면 좋겠습니다."; color = "#3b82f6";
+      } else if (score >= 55) {
+        level = "📚 보통"; desc = "더 많은 연습이 필요합니다. 아래 개선 계획을 참고하세요."; color = "#f59e0b";
+      } else {
+        level = "⚠️ 미흡"; desc = "집중적인 면접 준비가 필요합니다."; color = "#ef4444";
+      }
+
+      document.getElementById("score-level").textContent = level;
+      document.getElementById("score-desc").textContent = desc;
+      document.getElementById("score-ring-fill").style.stroke = color;
+    }
+
+    function updateSubScore(scoreId, barId, score) {
+      document.getElementById(scoreId).textContent = score;
+      setTimeout(() => {
+        document.getElementById(barId).style.width = score + "%";
+      }, 500);
+    }
+
+    function renderSpeechAnalysis(speechSummary) {
+      const filler = speechSummary.filler_analysis || {};
+      document.getElementById("filler-result").textContent =
+        `총 ${filler.total_count || 0}회`;
+      document.getElementById("filler-detail").textContent =
+        filler.recommendation || "";
+      document.getElementById("filler-badge").textContent =
+        filler.severity || "--";
+      document.getElementById("filler-badge").className =
+        `analysis-badge badge-${filler.severity === "양호" ? "green" : filler.severity === "주의" ? "yellow" : "red"}`;
+
+      const speed = speechSummary.speed_analysis || {};
+      document.getElementById("speed-result").textContent =
+        `${speed.words_per_minute || 0} wpm`;
+      document.getElementById("speed-detail").textContent =
+        speed.recommendation || "";
+      document.getElementById("speed-badge").textContent =
+        speed.speed_level || "--";
+
+      const structure = speechSummary.structure_analysis || {};
+      document.getElementById("star-result").textContent =
+        structure.uses_star_method ? "STAR 기법 사용" : "STAR 기법 미사용";
+      document.getElementById("star-detail").textContent =
+        `문장 수: ${structure.sentence_count || 0}개`;
+      document.getElementById("star-badge").textContent =
+        structure.uses_star_method ? "사용" : "미사용";
+      document.getElementById("star-badge").className =
+        `analysis-badge badge-${structure.uses_star_method ? "green" : "yellow"}`;
+
+      const tone = speechSummary.tone_analysis || {};
+      document.getElementById("tone-result").textContent =
+        tone.tone_type || "분석 불가";
+      document.getElementById("tone-detail").textContent =
+        tone.recommendation || "";
+      document.getElementById("tone-badge").textContent =
+        tone.monotone_risk ? "단조로움" : "양호";
+    }
+
+    function renderQAFeedback(answers) {
+      const container = document.getElementById("qa-feedback-list");
+      if (!answers.length) {
+        container.innerHTML = "<p>피드백 데이터가 없습니다.</p>";
+        return;
+      }
+
+      container.innerHTML = answers.map((item, i) => {
+        const fb = item.feedback || {};
+        const score = fb.score || 0;
+        const scoreColor = score >= 80 ? "#10b981" : score >= 60 ? "#3b82f6" : "#ef4444";
+
+        const strengths = (fb.strengths || []).map(s => `<li>${s}</li>`).join("");
+        const improvements = (fb.improvements || []).map(s => `<li>${s}</li>`).join("");
+
+        return `
+          <div class="qa-feedback-card">
+            <div class="qa-header">
+              <span class="qa-number">Q${i + 1}</span>
+              <span class="qa-category">${item.feedback?.category || ""}</span>
+              <span class="qa-score" style="color:${scoreColor}">${score}점</span>
+            </div>
+            <div class="qa-question">${item.question || ""}</div>
+            <div class="qa-answer-preview">${(item.answer || "").substring(0, 150)}${item.answer?.length > 150 ? "..." : ""}</div>
+            <div class="qa-feedback-text">${fb.overall_feedback || ""}</div>
+            <div class="qa-score-bars">
+              <div class="qa-score-item">
+                <span>논리성</span>
+                <div class="qa-bar"><div class="qa-bar-fill" style="width:${fb.logic_score||0}%;background:#6366f1"></div></div>
+                <span>${fb.logic_score || 0}</span>
+              </div>
+              <div class="qa-score-item">
+                <span>구체성</span>
+                <div class="qa-bar"><div class="qa-bar-fill" style="width:${fb.specificity_score||0}%;background:#8b5cf6"></div></div>
+                <span>${fb.specificity_score || 0}</span>
+              </div>
+            </div>
+            ${strengths ? `<div class="qa-strengths"><strong>✅ 강점:</strong><ul>${strengths}</ul></div>` : ""}
+            ${improvements ? `<div class="qa-improvements"><strong>⚡ 개선점:</strong><ul>${improvements}</ul></div>` : ""}
+            ${fb.star_method_check !== undefined ? `<div class="star-badge ${fb.star_method_check ? "star-used" : "star-not-used"}">STAR 기법: ${fb.star_method_check ? "사용 ✓" : "미사용"}</div>` : ""}
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderImprovementPlan(answers) {
+      const container = document.getElementById("improvement-plan");
+      const allImprovements = [];
+
+      answers.forEach(item => {
+        const improvements = item.feedback?.improvements || [];
+        allImprovements.push(...improvements.slice(0, 2));
+      });
+
+      const unique = [...new Set(allImprovements)].slice(0, 6);
+
+      if (!unique.length) {
+        container.innerHTML = "<p>개선 계획 데이터가 없습니다.</p>";
+        return;
+      }
+
+      container.innerHTML = unique.map((imp, i) => `
+        <div class="improvement-item">
+          <div class="improvement-number">${i + 1}</div>
+          <div class="improvement-text">${imp}</div>
+        </div>
+      `).join("");
+    }
+
+    async function downloadPDF() {
+      window.open(`/api/download-report/${sessionId}`, "_blank");
+    }
+
+    // 페이지 로드 시 리포트 불러오기
+    loadReport();
+  </script>
+</body>
+</html>
