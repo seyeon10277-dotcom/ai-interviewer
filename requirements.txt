@@ -2,7 +2,7 @@ flask==3.0.3
 flask-socketio==5.3.6
 python-socketio==5.11.2
 python-dotenv==1.0.1
-openai>=1.52.0
+openai==1.57.0
 mediapipe==0.10.33
 opencv-python-headless==4.10.0.84
 numpy==2.0.2
