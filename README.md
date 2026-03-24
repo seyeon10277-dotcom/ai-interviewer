@@ -20,9 +20,12 @@ GPT + MediaPipe 기반 실시간 AI 면접 연습 시스템
 AI Interviwer/
 ├── .env                        # OpenAI API 키 및 환경 설정
 ├── requirements.txt            # Python 패키지 목록
+├── Procfile                    # Render 배포용 실행 명령
+├── runtime.txt                 # Python 버전 지정 (3.11.9)
 ├── app.py                      # Flask 메인 서버 + WebSocket
 ├── run.py                      # 실행 스크립트 (환경 검사 포함)
 ├── modules/
+│   ├── auth.py                 # Supabase 인증 모듈
 │   ├── ai_feedback.py          # GPT 기반 답변 피드백 모듈
 │   ├── speech_analyzer.py      # 음성 분석 (습관어, 속도, 톤)
 │   ├── face_analyzer.py        # MediaPipe 얼굴 인식
@@ -72,7 +75,7 @@ AI Interviwer/
 - Supabase Auth (이메일/비밀번호) 기반
 - JWT 토큰을 Flask 세션에 저장
 - 모든 페이지 및 API에 `@login_required` 데코레이터 적용
-- 프로젝트: `login_test` (ap-northeast-2)
+- Supabase 클라이언트 lazy init (서버 시작 시 DNS 오류 방지)
 
 ## 🔌 주요 의존성
 
@@ -80,16 +83,18 @@ AI Interviwer/
 |--------|------|------|
 | flask | 3.0.3 | 웹 서버 |
 | flask-socketio | 5.3.6 | WebSocket 실시간 통신 |
-| openai | 1.35.3 | GPT 피드백 생성 |
-| mediapipe | 0.10.14 | 얼굴 분석 |
+| openai | 1.57.0 | GPT 피드백 생성 |
+| mediapipe | 0.10.33 | 얼굴 분석 |
 | librosa | 0.10.2 | 음성 톤 분석 |
 | fpdf2 | 2.7.9 | PDF 리포트 생성 |
-| eventlet | 0.36.1 | 비동기 처리 |
-| supabase | 2.0.0+ | 인증 (회원가입/로그인) |
+| gevent | 24.2.1 | 비동기 처리 (httpx 호환) |
+| gevent-websocket | 0.10.1 | WebSocket 지원 |
+| supabase | 2.28.3 | 인증 (회원가입/로그인) |
+| httpx | 0.27.0 | HTTP 클라이언트 |
 
 ## ⚙️ 환경 요구사항
 
-- Python 3.10+
+- Python 3.11.9
 - Chrome 브라우저 (Web Speech API 지원)
 - 웹캠 및 마이크
 - OpenAI API 키
@@ -104,6 +109,22 @@ APP_URL=http://localhost:5000
 FLASK_SECRET_KEY=my-secret-key-2024
 FLASK_DEBUG=False
 FLASK_PORT=5000
+```
+
+## 🚀 Render 배포
+
+### 환경변수 설정 (Render 대시보드 → Environment)
+```
+OPENAI_API_KEY=sk-proj-xxxxxxxxxxxx
+SUPABASE_URL=https://xxxx.supabase.co
+SUPABASE_ANON_KEY=eyJhbGci...
+FLASK_SECRET_KEY=my-secret-key-2024
+APP_URL=https://your-app.onrender.com
+```
+
+### Start Command (Render 대시보드 → Settings)
+```
+gunicorn --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1 --timeout 120 --bind 0.0.0.0:10000 app:app
 ```
 
 ## 🎯 사용 방법

@@ -64,7 +64,7 @@ FLASK_PORT=5000
 python run.py
 ```
 
-### 운영 환경
+### 운영 환경 (로컬)
 
 ```env
 FLASK_DEBUG=False
@@ -74,6 +74,29 @@ FLASK_PORT=8000
 ```bash
 python run.py
 ```
+
+---
+
+## 🚀 Render 배포
+
+### 환경변수 (Render 대시보드 → Environment)
+
+```
+OPENAI_API_KEY=sk-proj-xxxxxxxxxxxx
+SUPABASE_URL=https://xxxx.supabase.co
+SUPABASE_ANON_KEY=eyJhbGci...
+FLASK_SECRET_KEY=my-secret-key-2024
+APP_URL=https://your-app.onrender.com
+```
+
+### Start Command (Render 대시보드 → Settings → Start Command)
+
+```
+gunicorn --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1 --timeout 120 --bind 0.0.0.0:10000 app:app
+```
+
+> Render의 Start Command는 Procfile보다 우선 적용됩니다.
+> `$PORT` 대신 `10000`을 직접 지정합니다 (Render 기본 포트).
 
 ---
 
@@ -116,6 +139,15 @@ taskkill /PID <PID번호> /F
 ### 카메라/마이크 오류
 - Chrome 브라우저 사용 필수 (Web Speech API 지원)
 - `http://localhost:5000` 접속 시 브라우저의 카메라/마이크 권한 허용 필요
+
+### Render 배포 - DNS Lookup Timeout
+- Supabase 클라이언트는 lazy init 방식으로 서버 시작 후 첫 요청 시 연결
+- eventlet 대신 gevent 사용 (httpx와 호환)
+- Start Command에 `--bind 0.0.0.0:10000` 명시 필요
+
+### Render 배포 - Worker failed to boot
+- Start Command가 Procfile을 덮어쓸 수 있음
+- Render 대시보드 Settings에서 Start Command 직접 확인 및 수정
 
 ---
 
