@@ -23,11 +23,12 @@ def get_supabase() -> Client:
 
 class AuthModule:
 
-    def sign_up(self, email: str, password: str):
+    def sign_up(self, email: str, password: str, redirect_url: str = None):
+        url = redirect_url or f"{APP_URL}/login"
         return get_supabase().auth.sign_up({
             "email": email,
             "password": password,
-            "options": {"email_redirect_to": f"{APP_URL}/login"}
+            "options": {"email_redirect_to": url}
         })
 
     def sign_in(self, email: str, password: str):

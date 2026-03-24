@@ -80,7 +80,8 @@ def signup():
         if len(password) < 6:
             return render_template("signup.html", error="비밀번호는 6자 이상이어야 합니다.")
         try:
-            result = auth_module.sign_up(email, password)
+            redirect_url = url_for("login", _external=True)
+            result = auth_module.sign_up(email, password, redirect_url=redirect_url)
             if result.session:
                 session["access_token"] = result.session.access_token
                 session["user_email"] = result.user.email
