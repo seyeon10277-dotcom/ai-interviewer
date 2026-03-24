@@ -3,12 +3,14 @@ from functools import wraps
 from flask import session, redirect, url_for
 from supabase import create_client, Client
 from dotenv import load_dotenv
+import httpx
 
 load_dotenv()
 
 supabase: Client = create_client(
     os.getenv("SUPABASE_URL"),
-    os.getenv("SUPABASE_ANON_KEY")
+    os.getenv("SUPABASE_ANON_KEY"),
+    options={"http_client": httpx.Client(timeout=30.0)}
 )
 
 APP_URL = os.getenv("APP_URL", "http://localhost:5000")
