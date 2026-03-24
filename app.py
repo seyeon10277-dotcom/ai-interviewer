@@ -16,7 +16,7 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "ai-interviewer-secret-2024")
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="gevent")
 
 # 가벼운 모듈만 서버 시작시 초기화
 ai_feedback = AIFeedbackModule()
