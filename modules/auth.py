@@ -1,16 +1,15 @@
 import os
 from functools import wraps
 from flask import session, redirect, url_for
-from supabase import create_client, Client
+from supabase import create_client, Client, ClientOptions
 from dotenv import load_dotenv
-import httpx
 
 load_dotenv()
 
 supabase: Client = create_client(
     os.getenv("SUPABASE_URL"),
     os.getenv("SUPABASE_ANON_KEY"),
-    options={"http_client": httpx.Client(timeout=30.0)}
+    options=ClientOptions(postgrest_client_timeout=30, storage_client_timeout=30)
 )
 
 APP_URL = os.getenv("APP_URL", "http://localhost:5000")
