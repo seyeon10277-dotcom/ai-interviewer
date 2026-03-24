@@ -8,17 +8,12 @@ load_dotenv()
 
 APP_URL = os.getenv("APP_URL", "http://localhost:5000")
 
-_supabase: Client = None
-
 
 def get_supabase() -> Client:
-    global _supabase
-    if _supabase is None:
-        _supabase = create_client(
-            os.getenv("SUPABASE_URL"),
-            os.getenv("SUPABASE_ANON_KEY")
-        )
-    return _supabase
+    return create_client(
+        os.getenv("SUPABASE_URL"),
+        os.getenv("SUPABASE_ANON_KEY")
+    )
 
 
 class AuthModule:

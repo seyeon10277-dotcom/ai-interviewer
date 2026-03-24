@@ -62,7 +62,11 @@ def login():
             session["user_email"] = result.user.email
             return redirect("/")
         except Exception as e:
-            error = "이메일 또는 비밀번호가 올바르지 않습니다."
+            error_msg = str(e).lower()
+            if "email not confirmed" in error_msg:
+                error = "이메일 인증이 필요합니다. 받은 편지함을 확인해주세요."
+            else:
+                error = "이메일 또는 비밀번호가 올바르지 않습니다."
             return render_template("login.html", error=error)
     return render_template("login.html")
 
@@ -99,10 +103,6 @@ def signup():
 
 @app.route("/logout")
 def logout():
-    try:
-        auth_module.sign_out()
-    except Exception:
-        pass
     session.clear()
     return redirect("/login")
 
